@@ -1,7 +1,7 @@
 import React from 'react';
 import axios from 'axios';
 import Results from './Results.jsx';
-import ReactPaginate from './ReactPaginate';
+import ReactPaginate from 'react-paginate';
 
 export default class App extends React.Component {
   constructor(props) {
@@ -9,13 +9,13 @@ export default class App extends React.Component {
     this.state = {
       searchKeyword: '',
       results: '',
-      searched: false
+      searched: false,
+      numOfPages: 0
     };
-
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
+    this.handlePageClick = this.handlePageClick.bind(this);
   }
-
   handleChange(event) {
     this.setState({ searchKeyword: event.target.value });
   }
@@ -24,25 +24,32 @@ export default class App extends React.Component {
     console.log(event.target);
     alert('A name was submitted: ' + this.state.searchKeyword);
     event.preventDefault();
-
-    let keyword = this.state.searchKeyword;
-
     axios
-      .get(`http://localhost:3000/events?q=${keyword}&_page`)
-      // .get(`http://localhost:3000/events/?q=${keyword}`)
-
+      .get(`http://localhost:3000/events/?q=${this.state.searchKeyword}`)
       .then(resp => {
         this.setState({
-          results: resp.data,
-          searched: true
+          numOfPages: Math.ceil(resp.data.length / 10)
         });
-        console.log(resp);
-      })
-      .then(() => {
-        console.log('this is our searched results', this.state.results);
       })
       .catch(error => {
         console.log(error);
+      });
+  }
+
+  handlePageClick(data) {
+    let pageNumber = data.selected + 1;
+    axios
+      .get(
+        `http://localhost:3000/events?_page=${pageNumber}&q=${this.state.searchKeyword}`
+      )
+      .then(results => {
+        this.setState({
+          searched: true,
+          results: results.data
+        });
+      })
+      .catch(err => {
+        console.log(err);
       });
   }
 
@@ -71,8 +78,20 @@ export default class App extends React.Component {
           <input type="submit" value="Submit" />
         </form>
         {this.state.searched && <Results results={this.state.results} />}
+        <ReactPaginate
+          previousLabel={'previous'}
+          nextLabel={'next'}
+          breakLabel={'...'}
+          breakClassName={'break-me'}
+          pageCount={this.state.numOfPages}
+          marginPagesDisplayed={2}
+          pageRangeDisplayed={5}
+          onPageChange={this.handlePageClick}
+          containerClassName={'pagination'}
+          subContainerClassName={'pages pagination'}
+          activeClassName={'active'}
+        />
       </div>
-      <div><ReactPaginate/></div>
     );
   }
 }
